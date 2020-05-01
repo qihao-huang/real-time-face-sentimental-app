@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Adam eye</string>
+    <string name="face_detect_text">Face Detection</string>
+</resources>
