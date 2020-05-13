@@ -3,13 +3,14 @@ package com.example.app_cv;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.content.res.AssetManager;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.WindowManager;
-
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.opencv.android.CameraBridgeViewBase;
+import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfRect;
@@ -21,12 +22,14 @@ import org.opencv.dnn.Dnn;
 import org.opencv.dnn.Net;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
+import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 
 public class face_detect extends AppCompatActivity implements
         CameraBridgeViewBase.CvCameraViewListener2 {
@@ -46,9 +49,32 @@ public class face_detect extends AppCompatActivity implements
     private Net mGenderNet;
     private static final String[] GENDERS = new String[]{"Male", "Female"};
 
+    private static final String[] EMOTIONS =
+            new String[]{"angry", "disgust", "fear", "happy", "sad", "surprise"};
+    // 0-1-2-3-4-5-6
+
+    // JNI
     static {
         System.loadLibrary("opencv_java3");
     }
+
+    static {
+        System.loadLibrary("tensorflow_inference");
+    }
+
+    // sentimental variables initialization
+    private String MODEL_PATH = "file:///android_asset/sentimental_model.pb";
+    private String INPUT_NAME = "convolution2d_10_input";
+    private String OUTPUT_NAME = "dense_6/Softmax";
+
+    private TensorFlowInferenceInterface tf;
+
+    float[] PREDICTIONS = new float[6];
+
+    private static final int HEIGHT = 48;
+    private static final int WIDTH = 48;
+    private static final int CHANNEL = 1;
+    private float[] INPUT_DATA = new float[HEIGHT*WIDTH*CHANNEL];
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,8 +85,12 @@ public class face_detect extends AppCompatActivity implements
 //        cameraView.setVisibility(CameraBridgeViewBase.VISIBLE);
         cameraView.setCvCameraViewListener(this);
         cameraView.setCameraIndex(CameraBridgeViewBase.CAMERA_ID_FRONT); // use front camera
-        initClassifier();
         cameraView.enableView();
+        // -------------------------
+        initClassifier();
+        initDNN();
+        initTF();
+        // -------------------------
     }
 
     private void initWindowSettings() {
@@ -69,6 +99,71 @@ public class face_detect extends AppCompatActivity implements
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
     }
+
+    // ------------------------------------------------
+
+    private void initTF(){
+        tf = new TensorFlowInferenceInterface(getAssets(), MODEL_PATH);
+    }
+
+    private String analyzeSentiment(final Mat mGray, final Rect face) {
+        try{
+            Mat capturedFace = new Mat(mGray, face);
+            Imgproc.resize(capturedFace, capturedFace, new Size(WIDTH, HEIGHT));
+
+            INPUT_DATA = mat_to_array(capturedFace);
+            //Pass input into the tensorflow
+            tf.feed(INPUT_NAME, INPUT_DATA, 1, WIDTH, HEIGHT, CHANNEL);
+            tf.run(new String[]{OUTPUT_NAME}); //compute predictions
+            tf.fetch(OUTPUT_NAME, PREDICTIONS); //copy the output into the PREDICTIONS array
+
+            Log.i(TAG, Arrays.toString(PREDICTIONS));
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error processing sentiment", e);
+        }
+
+        return null;
+
+//        Object[] results = argmax(PREDICTIONS); //Obtained highest prediction
+
+//        int class_index = (Integer) results[0];
+//        final String pred_emotion = EMOTIONS[class_index];
+
+//        return pred_emotion;
+    }
+
+    private float[] mat_to_array(Mat imgMat){
+        Imgproc.cvtColor(imgMat, imgMat, Imgproc.COLOR_GRAY2RGBA, 4);
+        Bitmap bmp = Bitmap.createBitmap(imgMat.cols(), imgMat.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(imgMat, bmp);
+
+        float[] output = new float[HEIGHT*WIDTH*CHANNEL];
+        int[] intValues = new int[bmp.getHeight() * bmp.getWidth()];
+        bmp.getPixels(intValues, 0, bmp.getWidth(), 0, 0, bmp.getWidth(), bmp.getHeight());
+
+        for (int i = 0; i < intValues.length; ++i) {
+            final int val = intValues[i];
+            output[i] = val & 0xFF;
+        }
+
+        return output;
+    }
+
+//    public static Object[] argmax(float[] array) {
+//        int best = -1;
+//        float best_confidence = 0.0f;
+//        for (int i = 0; i < array.length; i++) {
+//            float value = array[i];
+//            if (value > best_confidence) {
+//                best_confidence = value;
+//                best = i;
+//            }
+//        }
+//        return new Object[]{best, best_confidence};
+//    }
+
+    // ------------------------------------------------
 
     private void initDNN() {
         // ------------------------------------------------
@@ -101,6 +196,7 @@ public class face_detect extends AppCompatActivity implements
         }
     }
 
+    // ------------------------------------------------
 
     private void initClassifier() {
         try {
@@ -125,7 +221,9 @@ public class face_detect extends AppCompatActivity implements
         }
     }
 
-    private String analyseAge(Mat mRgba, Rect face) {
+    // ------------------------------------------------
+
+    private String analyzeAge(Mat mRgba, Rect face) {
         try {
             Mat capturedFace = new Mat(mRgba, face);
             //Resizing pictures to resolution of Caffe model
@@ -152,7 +250,7 @@ public class face_detect extends AppCompatActivity implements
         return null;
     }
 
-    private String analyseGender(Mat mRgba, Rect face) {
+    private String analyzeGender(Mat mRgba, Rect face) {
         try {
             Mat capturedFace = new Mat(mRgba, face);
             //Resizing pictures to resolution of Caffe model
@@ -208,7 +306,6 @@ public class face_detect extends AppCompatActivity implements
     public void onCameraViewStarted(int width, int height) {
         mGray = new Mat();
         mRgba = new Mat();
-        initDNN();
     }
 
     @Override
@@ -232,7 +329,6 @@ public class face_detect extends AppCompatActivity implements
         Core.flip(mGray, mGray, 1);
         // -------Rotate the preview the streaming-------
 
-        // TODO: the number 0.2f
         float mRelativeFaceSize = 0.2f;
         if (mAbsoluteFaceSize == 0) {
             int height = mGray.rows();
@@ -259,29 +355,29 @@ public class face_detect extends AppCompatActivity implements
         for (Rect faceRect : facesArray) {
             String predict_age = "";
             String predict_gender = "";
+            String predict_emotion = "";
             try{
-                predict_age = analyseAge(mRgba, faceRect);
-                predict_gender = analyseGender(mRgba, faceRect);
+                predict_age = analyzeAge(mRgba, faceRect);
+                predict_gender = analyzeGender(mRgba, faceRect);
+                predict_emotion = analyzeSentiment(mGray, faceRect);
             } catch (Exception e) {
                 Log.e(TAG, "Error", e);
             }
 
             Imgproc.rectangle(mRgba, faceRect.tl(), faceRect.br(), faceRectColor, 3);
-
-            // TODO: change text position
+//            // TODO: change emotion position
+//            Imgproc.putText(mRgba, predict_emotion, new Point(mGray.rows() / 2, mGray.cols() / 2),
+//                    Core.FONT_HERSHEY_SIMPLEX, 2, new Scalar(0, 255, 255), 4);
             Imgproc.putText(mRgba, predict_age, faceRect.tl(),
                     Core.FONT_HERSHEY_SIMPLEX, 2, new Scalar(255, 255, 0), 4);
             Imgproc.putText(mRgba, predict_gender, faceRect.br(),
                     Core.FONT_HERSHEY_SIMPLEX, 2, new Scalar(255, 255, 0), 4);
         }
 
-
-
         return mRgba;
     }
 
     // -----------------------------------
-
     @Override
     public void onPause() {
         super.onPause();
@@ -294,4 +390,5 @@ public class face_detect extends AppCompatActivity implements
         super.onDestroy();
         cameraView.disableView();
     }
+    // -----------------------------------
 }
