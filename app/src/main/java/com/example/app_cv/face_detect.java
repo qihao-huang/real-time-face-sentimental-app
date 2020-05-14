@@ -4,6 +4,10 @@ import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.Paint;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.WindowManager;
@@ -50,7 +54,7 @@ public class face_detect extends AppCompatActivity implements
     private static final String[] GENDERS = new String[]{"Male", "Female"};
 
     private static final String[] EMOTIONS =
-            new String[]{"angry", "disgust", "fear", "happy", "sad", "surprise"};
+            new String[]{"angry", "disgust", "fear", "happy", "sad", "surprise", "neutral"};
     // 0-1-2-3-4-5-6
 
     // JNI
@@ -64,17 +68,17 @@ public class face_detect extends AppCompatActivity implements
 
     // sentimental variables initialization
     private String MODEL_PATH = "file:///android_asset/sentimental_model.pb";
-    private String INPUT_NAME = "convolution2d_10_input";
-    private String OUTPUT_NAME = "dense_6/Softmax";
+    private String INPUT_NAME = "conv2d_29_input";
+    private String OUTPUT_NAME = "activation_48/Softmax";
 
     private TensorFlowInferenceInterface tf;
 
-    float[] PREDICTIONS = new float[6];
+    float[] PREDICTIONS = new float[7];
 
     private static final int HEIGHT = 48;
     private static final int WIDTH = 48;
     private static final int CHANNEL = 1;
-    private float[] INPUT_DATA = new float[HEIGHT*WIDTH*CHANNEL];
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,6 +89,7 @@ public class face_detect extends AppCompatActivity implements
 //        cameraView.setVisibility(CameraBridgeViewBase.VISIBLE);
         cameraView.setCvCameraViewListener(this);
         cameraView.setCameraIndex(CameraBridgeViewBase.CAMERA_ID_FRONT); // use front camera
+//        cameraView.setCameraIndex(CameraBridgeViewBase.CAMERA_ID_BACK); // use front camera
         cameraView.enableView();
         // -------------------------
         initClassifier();
@@ -109,11 +114,29 @@ public class face_detect extends AppCompatActivity implements
     private String analyzeSentiment(final Mat mGray, final Rect face) {
         try{
             Mat capturedFace = new Mat(mGray, face);
-            Imgproc.resize(capturedFace, capturedFace, new Size(WIDTH, HEIGHT));
 
-            INPUT_DATA = mat_to_array(capturedFace);
-            //Pass input into the tensorflow
-            tf.feed(INPUT_NAME, INPUT_DATA, 1, WIDTH, HEIGHT, CHANNEL);
+            Imgproc.cvtColor(capturedFace, capturedFace, Imgproc.COLOR_GRAY2RGBA, 4);
+            Bitmap bmp = Bitmap.createBitmap(capturedFace.cols(), capturedFace.rows(), Bitmap.Config.ARGB_8888);
+            Utils.matToBitmap(capturedFace, bmp);
+            Bitmap grayImage = toGrayscale(bmp);
+            Bitmap resizedImage = getResizedBitmap(grayImage,WIDTH,HEIGHT);
+
+            int[] pixelArray = new int[resizedImage.getWidth()*resizedImage.getHeight()];
+            resizedImage.getPixels(pixelArray, 0, resizedImage.getWidth(), 0, 0,
+                    resizedImage.getWidth(), resizedImage.getHeight());
+            float[] normalized_pixels = new float[pixelArray.length];
+
+            for (int i=0; i < pixelArray.length; i++) {
+                // 0 for white and 255 for black
+                int b = pixelArray[i] & 0xff;
+
+                normalized_pixels[i] = (float)(b);
+            }
+
+//            Log.d("pixel_values", String.valueOf(normalized_pixels[0]));
+
+            //Pass input into the TensorFlow
+            tf.feed(INPUT_NAME, normalized_pixels, 1, WIDTH, HEIGHT, CHANNEL);
             tf.run(new String[]{OUTPUT_NAME}); //compute predictions
             tf.fetch(OUTPUT_NAME, PREDICTIONS); //copy the output into the PREDICTIONS array
 
@@ -123,45 +146,49 @@ public class face_detect extends AppCompatActivity implements
             Log.e(TAG, "Error processing sentiment", e);
         }
 
-        return null;
+        Object[] results = argmax(PREDICTIONS); //Obtained highest prediction
+        int class_index = (Integer) results[0];
+        final String pred_emotion = EMOTIONS[class_index];
 
-//        Object[] results = argmax(PREDICTIONS); //Obtained highest prediction
+        Log.i(TAG, "pred_emotion: " + pred_emotion);
 
-//        int class_index = (Integer) results[0];
-//        final String pred_emotion = EMOTIONS[class_index];
-
-//        return pred_emotion;
+        return pred_emotion;
     }
 
-    private float[] mat_to_array(Mat imgMat){
-        Imgproc.cvtColor(imgMat, imgMat, Imgproc.COLOR_GRAY2RGBA, 4);
-        Bitmap bmp = Bitmap.createBitmap(imgMat.cols(), imgMat.rows(), Bitmap.Config.ARGB_8888);
-        Utils.matToBitmap(imgMat, bmp);
+    public Bitmap toGrayscale(Bitmap bmpOriginal)
+    {
+        int width, height;
+        height = bmpOriginal.getHeight();
+        width = bmpOriginal.getWidth();
 
-        float[] output = new float[HEIGHT*WIDTH*CHANNEL];
-        int[] intValues = new int[bmp.getHeight() * bmp.getWidth()];
-        bmp.getPixels(intValues, 0, bmp.getWidth(), 0, 0, bmp.getWidth(), bmp.getHeight());
+        Bitmap bmpGrayscale = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(bmpGrayscale);
+        Paint paint = new Paint();
+        ColorMatrix cm = new ColorMatrix();
+        cm.setSaturation(0);
+        ColorMatrixColorFilter f = new ColorMatrixColorFilter(cm);
+        paint.setColorFilter(f);
+        c.drawBitmap(bmpOriginal, 0, 0, paint);
 
-        for (int i = 0; i < intValues.length; ++i) {
-            final int val = intValues[i];
-            output[i] = val & 0xFF;
+        return bmpGrayscale;
+    }
+
+    public Bitmap getResizedBitmap(Bitmap image, int bitmapWidth, int bitmapHeight) {
+        return Bitmap.createScaledBitmap(image, bitmapWidth, bitmapHeight, true);
+    }
+
+    public static Object[] argmax(float[] array) {
+        int best = -1;
+        float best_confidence = 0.0f;
+        for (int i = 0; i < array.length; i++) {
+            float value = array[i];
+            if (value > best_confidence) {
+                best_confidence = value;
+                best = i;
+            }
         }
-
-        return output;
+        return new Object[]{best, best_confidence};
     }
-
-//    public static Object[] argmax(float[] array) {
-//        int best = -1;
-//        float best_confidence = 0.0f;
-//        for (int i = 0; i < array.length; i++) {
-//            float value = array[i];
-//            if (value > best_confidence) {
-//                best_confidence = value;
-//                best = i;
-//            }
-//        }
-//        return new Object[]{best, best_confidence};
-//    }
 
     // ------------------------------------------------
 
@@ -226,6 +253,7 @@ public class face_detect extends AppCompatActivity implements
     private String analyzeAge(Mat mRgba, Rect face) {
         try {
             Mat capturedFace = new Mat(mRgba, face);
+
             //Resizing pictures to resolution of Caffe model
             Imgproc.resize(capturedFace, capturedFace, new Size(227, 227));
             //Converting RGBA to BGR
@@ -253,6 +281,7 @@ public class face_detect extends AppCompatActivity implements
     private String analyzeGender(Mat mRgba, Rect face) {
         try {
             Mat capturedFace = new Mat(mRgba, face);
+
             //Resizing pictures to resolution of Caffe model
             Imgproc.resize(capturedFace, capturedFace, new Size(227, 227));
             //Converting RGBA to BGR
@@ -365,11 +394,15 @@ public class face_detect extends AppCompatActivity implements
             }
 
             Imgproc.rectangle(mRgba, faceRect.tl(), faceRect.br(), faceRectColor, 3);
-//            // TODO: change emotion position
-//            Imgproc.putText(mRgba, predict_emotion, new Point(mGray.rows() / 2, mGray.cols() / 2),
-//                    Core.FONT_HERSHEY_SIMPLEX, 2, new Scalar(0, 255, 255), 4);
+
+            Imgproc.putText(mRgba, predict_emotion, new Point(faceRect.x, faceRect.y+faceRect.height),
+                    Core.FONT_HERSHEY_SIMPLEX, 2, new Scalar(255, 255, 0), 6);
+
+            // top left
             Imgproc.putText(mRgba, predict_age, faceRect.tl(),
                     Core.FONT_HERSHEY_SIMPLEX, 2, new Scalar(255, 255, 0), 4);
+
+            // bottom right
             Imgproc.putText(mRgba, predict_gender, faceRect.br(),
                     Core.FONT_HERSHEY_SIMPLEX, 2, new Scalar(255, 255, 0), 4);
         }
