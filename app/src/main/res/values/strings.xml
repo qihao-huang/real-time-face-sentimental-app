@@ -1,4 +1,16 @@
 <resources>
     <string name="app_name">Adam eye</string>
     <string name="face_detect_text">Face Detection</string>
+    <string name="title_activity_main2">Main2Activity</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="first_fragment_label">First Fragment</string>
+    <string name="second_fragment_label">Second Fragment</string>
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="introduction1">Medical Care: If we can know the emotional state of patients, especially patients with expression disorders, we can make different nursing measures according to the emotions of patients and improve the amount of nursing care.</string>
+    <string name="introduction2">Product Development: If you can identify the emotional state in the process of using the product and understand the user experience, you can design a product that is more suitable for the needs of user by improving the product performance.</string>
+    <string name="introduction3">Human-machine Interaction Systems: If the system can recognize the emotional state of the person, the human-machine interaction will become more friendly and natural.</string>
+
+    <string name="hello_first_fragment">Hello first fragment</string>
+    <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
 </resources>

@@ -1,6 +1,7 @@
 package com.example.app_cv;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
@@ -11,6 +12,8 @@ import android.graphics.Paint;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.WindowManager;
+import android.widget.TextView;
+
 import androidx.appcompat.app.AppCompatActivity;
 
 import org.opencv.android.CameraBridgeViewBase;
@@ -38,13 +41,13 @@ import java.util.Arrays;
 public class face_detect extends AppCompatActivity implements
         CameraBridgeViewBase.CvCameraViewListener2 {
 
-    private CameraBridgeViewBase cameraView;
-    private CascadeClassifier classifier;
-    private Mat mGray;
-    private Mat mRgba;
+    public CameraBridgeViewBase cameraView;
+    public CascadeClassifier classifier;
+    public Mat mGray;
+    public Mat mRgba;
     private int mAbsoluteFaceSize = 0;
 
-    private static final String TAG = "Test";
+    public static final String TAG = "Test";
 
     private Net mAgeNet;
     private static final String[] AGES =
@@ -55,9 +58,7 @@ public class face_detect extends AppCompatActivity implements
 
     private static final String[] EMOTIONS =
             new String[]{"angry", "disgust", "fear", "happy", "sad", "surprise", "neutral"};
-    // 0-1-2-3-4-5-6
 
-    // JNI
     static {
         System.loadLibrary("opencv_java3");
     }
@@ -79,12 +80,14 @@ public class face_detect extends AppCompatActivity implements
     private static final int WIDTH = 48;
     private static final int CHANNEL = 1;
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         initWindowSettings();
         setContentView(R.layout.face_detect);
+        Intent i=getIntent();
+        TextView tv=(TextView)findViewById(R.id.say_hello);
+        tv.setText(i.getStringExtra("data"));
         cameraView = (CameraBridgeViewBase) findViewById(R.id.camera_view);
 //        cameraView.setVisibility(CameraBridgeViewBase.VISIBLE);
         cameraView.setCvCameraViewListener(this);

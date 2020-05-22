@@ -3,10 +3,82 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <TextView android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dip"
+        android:layout_marginBottom="20dip"
+        android:gravity="center"
+        android:textColor="#372c24"
+        android:textSize="20dip"
+        android:text="Welcome!"/>
+
+    <pl.droidsonroids.gif.GifImageView
+        android:id="@+id/gv_error"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_centerInParent="true"
+        android:layout_marginStart="-6dp"
+        android:layout_marginLeft="10dip"
+        android:layout_marginTop="-205dp"
+        android:layout_marginEnd="0dp"
+        android:src="@drawable/backg" />
+
+    <TextView android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="390dip"
+        android:layout_marginBottom="20dip"
+        android:textColor="#372c24"
+        android:text="Account"/>
+
+    <EditText android:id="@+id/txt_UserName"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="410dip"
+        android:layout_marginBottom="20dip"
+        android:singleLine="true"/>
+
+    <TextView android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="480dip"
+        android:layout_marginBottom="20dip"
+        android:textColor="#372c24"
+        android:text="Password"/>
+
+    <EditText android:id="@+id/txt_UserPW"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="500dip"
+        android:singleLine="true"
+        android:inputType="textPassword"/>
+
+    <TextView
+        android:id="@+id/link_to_register"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="-15dp"
+        android:layout_marginTop="540dip"
+        android:layout_marginEnd="4dp"
+        android:gravity="center"
+        android:text="Login as a stranger？"
+        android:textColor="#0b84aa"
+        android:textSize="15dip" />
+
+
     <Button
         android:id="@+id/face_detect"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/face_detect_text" />
+        android:layout_alignParentStart="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginStart="142dp"
+        android:layout_marginTop="590dip"
+        android:layout_marginBottom="40dip"
+        android:text="START!"
+        android:textSize="20dip" />
 
 </RelativeLayout>

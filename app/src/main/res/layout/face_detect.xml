@@ -7,6 +7,58 @@
     <org.opencv.android.JavaCameraView
         android:id="@+id/camera_view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="500dp" />
+
+    <TextView  android:id="@+id/say_hello"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dip"
+        android:layout_marginBottom="20dip"
+        android:textColor="#708090"
+        android:textSize="30dip"
+        android:text="Hello!"/>
+
+    <TextView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="-10dip"
+        android:layout_marginBottom="20dip"
+        android:layout_marginRight="10dip"
+        android:textColor="#696969"
+        android:textSize="15dip"
+        android:text="Let me introduce the potential use of our app! "/>
+
+    <TextView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="-10dip"
+        android:layout_marginBottom="20dip"
+        android:layout_marginLeft="10dip"
+        android:layout_marginRight="10dip"
+        android:textColor="#696969"
+        android:textSize="12dip"
+        android:text="@string/introduction1"/>
+
+    <TextView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="-10dip"
+        android:layout_marginBottom="20dip"
+        android:layout_marginLeft="10dip"
+        android:layout_marginRight="10dip"
+        android:textColor="#696969"
+        android:textSize="12dip"
+        android:text="@string/introduction2"/>
+
+    <TextView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="-10dip"
+        android:layout_marginBottom="20dip"
+        android:layout_marginLeft="10dip"
+        android:layout_marginRight="10dip"
+        android:textColor="#696969"
+        android:textSize="12dip"
+        android:text="@string/introduction3"/>
 
 </LinearLayout>
